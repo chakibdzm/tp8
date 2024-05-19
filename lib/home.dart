@@ -8,6 +8,8 @@ import 'package:on_audio_query/on_audio_query.dart';
 import 'package:just_audio/just_audio.dart';
 import 'package:path_provider/path_provider.dart';
 
+import 'favorite.dart';
+
 
 class MusicListScreen extends StatefulWidget {
   @override
@@ -22,6 +24,16 @@ class _MusicListScreenState extends State<MusicListScreen> {
   void initState() {
     super.initState();
     requestPermissionAndFetchSongs();
+  }
+  DBHelper _dbHelper = DBHelper();
+
+  void toggleFavorite(SongModel song) async {
+    if (await _dbHelper.isFavorite(song.title)) {
+      await _dbHelper.removeFromFavorites(song.title);
+    } else {
+      await _dbHelper.addToFavorites(song.title);
+    }
+    setState(() {}); // Update UI
   }
 
   Future<void> requestPermissionAndFetchSongs() async {
@@ -66,11 +78,41 @@ class _MusicListScreenState extends State<MusicListScreen> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
+      floatingActionButton: FloatingActionButton(
+        onPressed: () {
+          Navigator.push(
+            context,
+            MaterialPageRoute(builder: (context) => FavoriteScreen()),
+          );
+        },
+        child: Icon(Icons.favorite),
+      ),
+
       appBar: AppBar(title: Text("Music List")),
       body: ListView.builder(
         itemCount: songs.length,
         itemBuilder: (context, index) {
           return ListTile(
+            trailing: FutureBuilder<bool>(
+              future: _dbHelper.isFavorite(songs[index].title),
+              builder: (context, snapshot) {
+                if (snapshot.connectionState == ConnectionState.waiting) {
+                  return CircularProgressIndicator(); // Placeholder while checking favorite status
+                } else if (snapshot.hasError) {
+                  return Icon(Icons.favorite_border, color: Colors.purple);
+                } else {
+                  bool isFavorite = snapshot.data ?? false;
+                  return IconButton(
+                    icon: Icon(
+                      isFavorite ? Icons.favorite : Icons.favorite_border,
+                      color: Colors.purple,
+                    ),
+                    onPressed: () => toggleFavorite(songs[index]),
+                  );
+                }
+              },
+            ),
+
             leading: Icon(Icons.music_note,color: Colors.purple,
             ),
             title: Text(songs[index].title),
